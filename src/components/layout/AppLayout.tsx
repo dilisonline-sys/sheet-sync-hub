@@ -12,7 +12,8 @@ import {
   X,
   Server,
   Moon,
-  Sun
+  Sun,
+  FileSpreadsheet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -44,6 +45,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Databases', href: '/databases', icon: Server },
+    { name: 'Import Data', href: '/import', icon: FileSpreadsheet },
     ...(isAdmin ? [{ name: 'User Management', href: '/users', icon: Users }] : []),
   ];
 
