@@ -8,6 +8,7 @@ import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import Databases from "@/pages/Databases";
 import UserManagement from "@/pages/UserManagement";
+import Import from "@/pages/Import";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/databases" element={<Databases />} />
             <Route path="/users" element={<UserManagement />} />
+            <Route path="/import" element={<Import />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
