@@ -1,13 +1,14 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChecks } from '@/contexts/ChecksContext';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockDatabases } from '@/data/mockDatabases';
-import { mockDailyChecksByDatabase, generateTrendData } from '@/data/mockDailyChecks';
-import { mockWeeklyChecks, getTablespaceUsageData } from '@/data/mockWeeklyChecks';
+import { generateTrendData } from '@/data/mockDailyChecks';
+import { getTablespaceUsageData } from '@/data/mockWeeklyChecks';
 import { CheckStatus, DailyCheckSummary } from '@/types';
 import DailyChecksTable from '@/components/dashboard/DailyChecksTable';
 import WeeklyChecksCard from '@/components/dashboard/WeeklyChecksCard';
@@ -25,6 +26,7 @@ import {
 
 const Dashboard = () => {
   const { isAuthenticated } = useAuth();
+  const { dailyChecksByDatabase, weeklyChecks } = useChecks();
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
@@ -35,7 +37,7 @@ const Dashboard = () => {
   const trendData = generateTrendData(30);
   
   // Calculate health status for each database
-  const databaseHealth = Object.entries(mockDailyChecksByDatabase).map(([dbId, checks]) => {
+  const databaseHealth = Object.entries(dailyChecksByDatabase).map(([dbId, checks]) => {
     const latestCheck = checks[0];
     const failedCount = latestCheck?.checks.filter(c => c.status === 'fail').length || 0;
     const warningCount = latestCheck?.checks.filter(c => c.status === 'warning').length || 0;
@@ -62,7 +64,7 @@ const Dashboard = () => {
   const criticalCount = databaseHealth.filter(d => d.health === 'critical').length;
 
   // Get tablespace data for CPRDB
-  const cprdbWeekly = mockWeeklyChecks.find(w => w.databaseId === 'cprdb');
+  const cprdbWeekly = weeklyChecks.find(w => w.databaseId === 'cprdb');
   const tablespaceData = cprdbWeekly?.tablespaces 
     ? getTablespaceUsageData(cprdbWeekly.tablespaces) 
     : [];
@@ -176,7 +178,7 @@ const Dashboard = () => {
               </TabsList>
 
               <TabsContent value="daily" className="space-y-6">
-                {Object.entries(mockDailyChecksByDatabase).map(([dbId, checks]) => {
+                {Object.entries(dailyChecksByDatabase).map(([dbId, checks]) => {
                   const db = mockDatabases.find(d => d.id === dbId);
                   return (
                     <DailyChecksTable 
@@ -190,7 +192,7 @@ const Dashboard = () => {
               </TabsContent>
 
               <TabsContent value="weekly" className="space-y-6">
-                {mockWeeklyChecks.map((weeklyCheck) => {
+                {weeklyChecks.map((weeklyCheck) => {
                   const db = mockDatabases.find(d => d.id === weeklyCheck.databaseId);
                   return (
                     <WeeklyChecksCard
