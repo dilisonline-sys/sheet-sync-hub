@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { mockDatabases } from '@/data/mockDatabases';
 import { CheckStatus, TablespaceInfo } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useChecks } from '@/contexts/ChecksContext';
 
 const dailyCheckTypes = [
   'DB Instance Availability',
@@ -94,9 +95,10 @@ const statusOptions: { value: CheckStatus; label: string; icon: React.ReactNode;
 
 export default function DataEntry() {
   const { toast } = useToast();
+  const { saveDailyChecks, saveWeeklyChecks } = useChecks();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDatabase, setSelectedDatabase] = useState<string>('');
-  const [dailyChecks, setDailyChecks] = useState<Record<string, CheckStatus>>({});
+  const [dailyChecksState, setDailyChecksState] = useState<Record<string, CheckStatus>>({});
   const [dailyComments, setDailyComments] = useState<Record<string, string>>({});
   
   // Weekly check fields
@@ -109,7 +111,7 @@ export default function DataEntry() {
   const checkTypes = selectedDb ? getCheckTypesForDatabase(selectedDb.type) : [];
 
   const handleDailyCheckChange = (checkName: string, status: CheckStatus) => {
-    setDailyChecks(prev => ({ ...prev, [checkName]: status }));
+    setDailyChecksState(prev => ({ ...prev, [checkName]: status }));
   };
 
   const handleCommentChange = (checkName: string, comment: string) => {
@@ -126,18 +128,17 @@ export default function DataEntry() {
       return;
     }
 
-    // Here you would send to backend
-    console.log('Saving daily checks:', {
-      date: selectedDate,
-      databaseId: selectedDatabase,
-      checks: dailyChecks,
-      comments: dailyComments,
-    });
+    // Save to context (which persists to localStorage and updates dashboard)
+    saveDailyChecks(selectedDatabase, selectedDate, dailyChecksState, dailyComments);
 
     toast({
       title: "Daily Checks Saved",
-      description: `Successfully saved daily checks for ${selectedDb?.databaseName}.`,
+      description: `Successfully saved daily checks for ${selectedDb?.databaseName}. Dashboard has been updated.`,
     });
+
+    // Reset form after saving
+    setDailyChecksState({});
+    setDailyComments({});
   };
 
   const handleSaveWeeklyChecks = () => {
@@ -150,24 +151,28 @@ export default function DataEntry() {
       return;
     }
 
-    // Here you would send to backend
-    console.log('Saving weekly checks:', {
-      date: selectedDate,
-      databaseId: selectedDatabase,
-      productionDbSize,
-      archiveDbSize,
-      invalidObjects,
-      instanceStartDate,
+    // Save to context (which persists to localStorage and updates dashboard)
+    saveWeeklyChecks(selectedDatabase, selectedDate, {
+      productionDbSize: productionDbSize || undefined,
+      archiveDbSize: archiveDbSize || undefined,
+      invalidObjects: invalidObjects ? parseInt(invalidObjects, 10) : undefined,
+      instanceStartDate: instanceStartDate || undefined,
     });
 
     toast({
       title: "Weekly Checks Saved",
-      description: `Successfully saved weekly checks for ${selectedDb?.databaseName}.`,
+      description: `Successfully saved weekly checks for ${selectedDb?.databaseName}. Dashboard has been updated.`,
     });
+
+    // Reset form after saving
+    setProductionDbSize('');
+    setArchiveDbSize('');
+    setInvalidObjects('');
+    setInstanceStartDate('');
   };
 
   const resetForm = () => {
-    setDailyChecks({});
+    setDailyChecksState({});
     setDailyComments({});
     setProductionDbSize('');
     setArchiveDbSize('');
@@ -284,7 +289,7 @@ export default function DataEntry() {
                         </div>
                         <div className="lg:w-2/3">
                           <RadioGroup
-                            value={dailyChecks[checkName] || 'not_checked'}
+                            value={dailyChecksState[checkName] || 'not_checked'}
                             onValueChange={(value) => handleDailyCheckChange(checkName, value as CheckStatus)}
                             className="flex flex-wrap gap-4"
                           >

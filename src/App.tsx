@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ChecksProvider } from "@/contexts/ChecksContext";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import Databases from "@/pages/Databases";
@@ -21,16 +22,18 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/databases" element={<Databases />} />
-            <Route path="/users" element={<UserManagement />} />
-            <Route path="/import" element={<Import />} />
-            <Route path="/data-entry" element={<DataEntry />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ChecksProvider>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/databases" element={<Databases />} />
+              <Route path="/users" element={<UserManagement />} />
+              <Route path="/import" element={<Import />} />
+              <Route path="/data-entry" element={<DataEntry />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ChecksProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
