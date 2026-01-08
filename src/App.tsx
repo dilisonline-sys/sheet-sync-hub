@@ -11,6 +11,10 @@ import Databases from "@/pages/Databases";
 import UserManagement from "@/pages/UserManagement";
 import Import from "@/pages/Import";
 import DataEntry from "@/pages/DataEntry";
+import Reports from "@/pages/Reports";
+import DailyReport from "@/pages/DailyReport";
+import MonthlyReport from "@/pages/MonthlyReport";
+import YearlyReport from "@/pages/YearlyReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +35,10 @@ const App = () => (
               <Route path="/users" element={<UserManagement />} />
               <Route path="/import" element={<Import />} />
               <Route path="/data-entry" element={<DataEntry />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/reports/daily" element={<DailyReport />} />
+              <Route path="/reports/monthly" element={<MonthlyReport />} />
+              <Route path="/reports/yearly" element={<YearlyReport />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ChecksProvider>
