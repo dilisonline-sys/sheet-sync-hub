@@ -14,7 +14,8 @@ import {
   Moon,
   Sun,
   FileSpreadsheet,
-  ClipboardEdit
+  ClipboardEdit,
+  FileBarChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -47,6 +48,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Databases', href: '/databases', icon: Server },
     { name: 'Data Entry', href: '/data-entry', icon: ClipboardEdit },
+    { name: 'Reports', href: '/reports', icon: FileBarChart },
     { name: 'Import Data', href: '/import', icon: FileSpreadsheet },
     ...(isAdmin ? [{ name: 'User Management', href: '/users', icon: Users }] : []),
   ];
