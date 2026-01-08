@@ -85,6 +85,7 @@ const DailyReport: React.FC = () => {
                   selected={selectedDate}
                   onSelect={(date) => date && setSelectedDate(date)}
                   initialFocus
+                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
