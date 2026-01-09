@@ -15,6 +15,7 @@ import Reports from "@/pages/Reports";
 import DailyReport from "@/pages/DailyReport";
 import MonthlyReport from "@/pages/MonthlyReport";
 import YearlyReport from "@/pages/YearlyReport";
+import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/reports/daily" element={<DailyReport />} />
               <Route path="/reports/monthly" element={<MonthlyReport />} />
               <Route path="/reports/yearly" element={<YearlyReport />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ChecksProvider>
