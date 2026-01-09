@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Database, CheckCircle2, XCircle, Loader2, RefreshCw, Copy, Check } from 'lucide-react';
-import { testConnection } from '@/services/api';
+import { Database, CheckCircle2, XCircle, Loader2, RefreshCw, Copy, Check, Server } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const DatabaseConnection = () => {
@@ -19,25 +18,85 @@ export const DatabaseConnection = () => {
     localStorage.getItem('api_enabled') === 'true'
   );
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
+  const [dbStatus, setDbStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
+  const [dbInfo, setDbInfo] = useState<{ status: string; database: string } | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const testApiConnection = async (url: string): Promise<{ success: boolean; data?: { status: string; database: string } }> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(`${url}/health`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        return { success: false };
+      }
+      
+      const data = await response.json();
+      return { success: true, data };
+    } catch {
+      return { success: false };
+    }
+  };
 
   const handleTestConnection = async () => {
     setConnectionStatus('testing');
     try {
-      const isConnected = await testConnection();
-      setConnectionStatus(isConnected ? 'connected' : 'failed');
+      const result = await testApiConnection(apiUrl);
+      setConnectionStatus(result.success ? 'connected' : 'failed');
       toast({
-        title: isConnected ? 'Connection Successful' : 'Connection Failed',
-        description: isConnected 
+        title: result.success ? 'API Connection Successful' : 'API Connection Failed',
+        description: result.success 
           ? 'Successfully connected to the backend API.'
-          : 'Could not connect to the backend. Please check your settings.',
-        variant: isConnected ? 'default' : 'destructive',
+          : 'Could not connect to the backend API. Please check the URL and ensure the server is running.',
+        variant: result.success ? 'default' : 'destructive',
       });
     } catch {
       setConnectionStatus('failed');
       toast({
         title: 'Connection Error',
-        description: 'An error occurred while testing the connection.',
+        description: 'An error occurred while testing the API connection.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleTestDatabase = async () => {
+    setDbStatus('testing');
+    try {
+      const result = await testApiConnection(apiUrl);
+      if (result.success && result.data) {
+        setDbStatus(result.data.database === 'connected' ? 'connected' : 'failed');
+        setDbInfo(result.data);
+        toast({
+          title: result.data.database === 'connected' ? 'Database Connected' : 'Database Disconnected',
+          description: result.data.database === 'connected' 
+            ? 'PostgreSQL database is connected and healthy.'
+            : 'Backend is running but database connection failed.',
+          variant: result.data.database === 'connected' ? 'default' : 'destructive',
+        });
+      } else {
+        setDbStatus('failed');
+        setDbInfo(null);
+        toast({
+          title: 'Database Test Failed',
+          description: 'Could not reach the backend to test database connection.',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      setDbStatus('failed');
+      setDbInfo(null);
+      toast({
+        title: 'Database Test Error',
+        description: 'An error occurred while testing the database connection.',
         variant: 'destructive',
       });
     }
@@ -71,8 +130,10 @@ export const DatabaseConnection = () => {
   };
 
   useEffect(() => {
-    if (isEnabled && connectionStatus === 'idle') {
+    // Auto-test on load if enabled
+    if (isEnabled) {
       handleTestConnection();
+      handleTestDatabase();
     }
   }, []);
 
@@ -110,46 +171,85 @@ export const DatabaseConnection = () => {
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
               placeholder="http://localhost:3001/api"
-              disabled={!isEnabled}
             />
             <p className="text-xs text-muted-foreground">
               The URL of your Node.js backend server
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Button onClick={handleTestConnection} disabled={!isEnabled || connectionStatus === 'testing'}>
+          <div className="flex items-center gap-4 flex-wrap">
+            <Button onClick={handleTestConnection} disabled={connectionStatus === 'testing'}>
               {connectionStatus === 'testing' ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Testing...
+                  Testing API...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Test Connection
+                  <Server className="mr-2 h-4 w-4" />
+                  Test API
+                </>
+              )}
+            </Button>
+            <Button onClick={handleTestDatabase} disabled={dbStatus === 'testing'} variant="secondary">
+              {dbStatus === 'testing' ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testing DB...
+                </>
+              ) : (
+                <>
+                  <Database className="mr-2 h-4 w-4" />
+                  Test Database
                 </>
               )}
             </Button>
             <Button onClick={handleSaveSettings} variant="outline">
               Save Settings
             </Button>
-            
-            <div className="flex-1" />
-            
-            <Badge variant={
-              connectionStatus === 'connected' ? 'default' :
-              connectionStatus === 'failed' ? 'destructive' :
-              'secondary'
-            } className="flex items-center gap-1">
-              {connectionStatus === 'connected' && <CheckCircle2 className="h-3 w-3" />}
-              {connectionStatus === 'failed' && <XCircle className="h-3 w-3" />}
-              {connectionStatus === 'idle' && 'Not Tested'}
-              {connectionStatus === 'testing' && 'Testing...'}
-              {connectionStatus === 'connected' && 'Connected'}
-              {connectionStatus === 'failed' && 'Failed'}
-            </Badge>
           </div>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">API Status:</span>
+              <Badge variant={
+                connectionStatus === 'connected' ? 'default' :
+                connectionStatus === 'failed' ? 'destructive' :
+                'secondary'
+              } className="flex items-center gap-1">
+                {connectionStatus === 'connected' && <CheckCircle2 className="h-3 w-3" />}
+                {connectionStatus === 'failed' && <XCircle className="h-3 w-3" />}
+                {connectionStatus === 'idle' && 'Not Tested'}
+                {connectionStatus === 'testing' && 'Testing...'}
+                {connectionStatus === 'connected' && 'Connected'}
+                {connectionStatus === 'failed' && 'Failed'}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Database:</span>
+              <Badge variant={
+                dbStatus === 'connected' ? 'default' :
+                dbStatus === 'failed' ? 'destructive' :
+                'secondary'
+              } className="flex items-center gap-1">
+                {dbStatus === 'connected' && <CheckCircle2 className="h-3 w-3" />}
+                {dbStatus === 'failed' && <XCircle className="h-3 w-3" />}
+                {dbStatus === 'idle' && 'Not Tested'}
+                {dbStatus === 'testing' && 'Testing...'}
+                {dbStatus === 'connected' && 'Connected'}
+                {dbStatus === 'failed' && 'Failed'}
+              </Badge>
+            </div>
+          </div>
+
+          {dbInfo && (
+            <Alert>
+              <Database className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Backend Status:</strong> {dbInfo.status} | <strong>Database:</strong> {dbInfo.database}
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
