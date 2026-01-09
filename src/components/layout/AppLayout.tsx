@@ -51,6 +51,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     { name: 'Reports', href: '/reports', icon: FileBarChart },
     { name: 'Import Data', href: '/import', icon: FileSpreadsheet },
     ...(isAdmin ? [{ name: 'User Management', href: '/users', icon: Users }] : []),
+    { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
   const NavLink = ({ item }: { item: typeof navigation[0] }) => {
