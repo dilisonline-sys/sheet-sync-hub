@@ -13,11 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { mockDatabases } from '@/data/mockDatabases';
 import { CheckStatus, TablespaceInfo } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useChecks } from '@/contexts/ChecksContext';
 import { useCheckTypes } from '@/contexts/CheckTypesContext';
+import { useDatabases } from '@/contexts/DatabaseContext';
 
 const statusOptions: { value: CheckStatus; label: string; icon: React.ReactNode; color: string }[] = [
   { value: 'pass', label: 'Pass', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-emerald-500' },
@@ -29,7 +29,8 @@ const statusOptions: { value: CheckStatus; label: string; icon: React.ReactNode;
 export default function DataEntry() {
   const { toast } = useToast();
   const { saveDailyChecks, saveWeeklyChecks } = useChecks();
-  const { getDailyChecksForDatabaseType, getWeeklyChecksForDatabaseType } = useCheckTypes();
+  const { getDailyChecksForDatabase, getWeeklyChecksForDatabase } = useCheckTypes();
+  const { databases } = useDatabases();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDatabase, setSelectedDatabase] = useState<string>('');
   const [dailyChecksState, setDailyChecksState] = useState<Record<string, CheckStatus>>({});
@@ -38,9 +39,9 @@ export default function DataEntry() {
   // Weekly check fields
   const [weeklyChecksState, setWeeklyChecksState] = useState<Record<string, string>>({});
 
-  const selectedDb = mockDatabases.find(db => db.id === selectedDatabase);
-  const dailyCheckTypes = selectedDb ? getDailyChecksForDatabaseType(selectedDb.type) : [];
-  const weeklyCheckTypes = selectedDb ? getWeeklyChecksForDatabaseType(selectedDb.type) : [];
+  const selectedDb = databases.find(db => db.id === selectedDatabase);
+  const dailyCheckTypes = selectedDb ? getDailyChecksForDatabase(selectedDatabase) : [];
+  const weeklyCheckTypes = selectedDb ? getWeeklyChecksForDatabase(selectedDatabase) : [];
 
   const handleDailyCheckChange = (checkName: string, status: CheckStatus) => {
     setDailyChecksState(prev => ({ ...prev, [checkName]: status }));
@@ -178,7 +179,7 @@ export default function DataEntry() {
                     <SelectValue placeholder="Select a database" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockDatabases.map((db) => (
+                    {databases.map((db) => (
                       <SelectItem key={db.id} value={db.id}>
                         <span className="flex items-center gap-2">
                           <span>{db.databaseName}</span>

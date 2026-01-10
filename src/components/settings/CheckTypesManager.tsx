@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Plus, Trash2, RotateCcw, Check } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, Check, Database } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCheckTypes } from '@/contexts/CheckTypesContext';
+import { useDatabases } from '@/contexts/DatabaseContext';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -23,111 +24,114 @@ import {
 
 export const CheckTypesManager = () => {
   const { toast } = useToast();
+  const { databases } = useDatabases();
   const {
     dailyCheckTypes,
     weeklyCheckTypes,
-    categories,
     addDailyCheck,
     removeDailyCheck,
     addWeeklyCheck,
     removeWeeklyCheck,
+    initializeChecksForDatabase,
     resetToDefaults,
   } = useCheckTypes();
 
-  const [newDailyChecks, setNewDailyChecks] = useState<Record<string, string>>({});
-  const [newWeeklyChecks, setNewWeeklyChecks] = useState<Record<string, string>>({});
+  const [selectedDatabase, setSelectedDatabase] = useState<string>(databases[0]?.id || '');
+  const [newDailyCheck, setNewDailyCheck] = useState('');
+  const [newWeeklyCheck, setNewWeeklyCheck] = useState('');
   const [pendingChanges, setPendingChanges] = useState<{
-    daily: { categoryId: string; action: 'add' | 'remove'; checkName: string }[];
-    weekly: { categoryId: string; action: 'add' | 'remove'; checkName: string }[];
+    daily: { dbId: string; action: 'add' | 'remove'; checkName: string }[];
+    weekly: { dbId: string; action: 'add' | 'remove'; checkName: string }[];
   }>({ daily: [], weekly: [] });
 
-  const handleAddDailyCheck = (categoryId: string) => {
-    const checkName = newDailyChecks[categoryId];
-    if (!checkName?.trim()) return;
-    
+  const selectedDb = databases.find(db => db.id === selectedDatabase);
+
+  const handleAddDailyCheck = () => {
+    if (!newDailyCheck.trim() || !selectedDatabase) return;
     setPendingChanges(prev => ({
       ...prev,
-      daily: [...prev.daily, { categoryId, action: 'add', checkName: checkName.trim() }],
+      daily: [...prev.daily, { dbId: selectedDatabase, action: 'add', checkName: newDailyCheck.trim() }],
     }));
-    setNewDailyChecks(prev => ({ ...prev, [categoryId]: '' }));
+    setNewDailyCheck('');
   };
 
-  const handleRemoveDailyCheck = (categoryId: string, checkName: string) => {
+  const handleRemoveDailyCheck = (checkName: string) => {
     setPendingChanges(prev => ({
       ...prev,
-      daily: [...prev.daily, { categoryId, action: 'remove', checkName }],
+      daily: [...prev.daily, { dbId: selectedDatabase, action: 'remove', checkName }],
     }));
   };
 
-  const handleAddWeeklyCheck = (categoryId: string) => {
-    const checkName = newWeeklyChecks[categoryId];
-    if (!checkName?.trim()) return;
-    
+  const handleAddWeeklyCheck = () => {
+    if (!newWeeklyCheck.trim() || !selectedDatabase) return;
     setPendingChanges(prev => ({
       ...prev,
-      weekly: [...prev.weekly, { categoryId, action: 'add', checkName: checkName.trim() }],
+      weekly: [...prev.weekly, { dbId: selectedDatabase, action: 'add', checkName: newWeeklyCheck.trim() }],
     }));
-    setNewWeeklyChecks(prev => ({ ...prev, [categoryId]: '' }));
+    setNewWeeklyCheck('');
   };
 
-  const handleRemoveWeeklyCheck = (categoryId: string, checkName: string) => {
+  const handleRemoveWeeklyCheck = (checkName: string) => {
     setPendingChanges(prev => ({
       ...prev,
-      weekly: [...prev.weekly, { categoryId, action: 'remove', checkName }],
+      weekly: [...prev.weekly, { dbId: selectedDatabase, action: 'remove', checkName }],
     }));
   };
 
   const applyChanges = () => {
-    // Apply daily changes
     pendingChanges.daily.forEach(change => {
       if (change.action === 'add') {
-        addDailyCheck(change.categoryId, change.checkName);
+        addDailyCheck(change.dbId, change.checkName);
       } else {
-        removeDailyCheck(change.categoryId, change.checkName);
+        removeDailyCheck(change.dbId, change.checkName);
       }
     });
 
-    // Apply weekly changes
     pendingChanges.weekly.forEach(change => {
       if (change.action === 'add') {
-        addWeeklyCheck(change.categoryId, change.checkName);
+        addWeeklyCheck(change.dbId, change.checkName);
       } else {
-        removeWeeklyCheck(change.categoryId, change.checkName);
+        removeWeeklyCheck(change.dbId, change.checkName);
       }
     });
 
     setPendingChanges({ daily: [], weekly: [] });
     toast({
       title: 'Changes Applied',
-      description: 'Check types have been updated and will reflect in Data Entry.',
+      description: 'Check types have been updated and will reflect in Data Entry and Dashboard.',
     });
   };
 
   const cancelChanges = () => {
     setPendingChanges({ daily: [], weekly: [] });
-    toast({
-      title: 'Changes Cancelled',
-      description: 'Pending changes have been discarded.',
-    });
+    setNewDailyCheck('');
+    setNewWeeklyCheck('');
+    toast({ title: 'Changes Cancelled', description: 'Pending changes have been discarded.' });
   };
 
   const handleReset = () => {
     resetToDefaults();
     setPendingChanges({ daily: [], weekly: [] });
-    toast({
-      title: 'Reset Complete',
-      description: 'All check types have been reset to defaults.',
-    });
+    toast({ title: 'Reset Complete', description: 'All check types have been reset to defaults.' });
+  };
+
+  const handleInitializeDatabase = () => {
+    if (selectedDb) {
+      initializeChecksForDatabase(selectedDatabase, selectedDb.type);
+      toast({ title: 'Checks Initialized', description: `Default checks have been set for ${selectedDb.shortName}.` });
+    }
   };
 
   const hasPendingChanges = pendingChanges.daily.length > 0 || pendingChanges.weekly.length > 0;
 
-  const getEffectiveChecks = (categoryId: string, type: 'daily' | 'weekly') => {
-    const baseChecks = type === 'daily' ? dailyCheckTypes[categoryId] || [] : weeklyCheckTypes[categoryId] || [];
+  const getEffectiveChecks = (type: 'daily' | 'weekly') => {
+    const baseChecks = type === 'daily' 
+      ? dailyCheckTypes[selectedDatabase] || [] 
+      : weeklyCheckTypes[selectedDatabase] || [];
     const changes = type === 'daily' ? pendingChanges.daily : pendingChanges.weekly;
     
     let effectiveChecks = [...baseChecks];
-    changes.filter(c => c.categoryId === categoryId).forEach(change => {
+    changes.filter(c => c.dbId === selectedDatabase).forEach(change => {
       if (change.action === 'add' && !effectiveChecks.includes(change.checkName)) {
         effectiveChecks.push(change.checkName);
       } else if (change.action === 'remove') {
@@ -138,14 +142,14 @@ export const CheckTypesManager = () => {
     return effectiveChecks;
   };
 
-  const isPendingAdd = (categoryId: string, checkName: string, type: 'daily' | 'weekly') => {
+  const isPendingAdd = (checkName: string, type: 'daily' | 'weekly') => {
     const changes = type === 'daily' ? pendingChanges.daily : pendingChanges.weekly;
-    return changes.some(c => c.categoryId === categoryId && c.checkName === checkName && c.action === 'add');
+    return changes.some(c => c.dbId === selectedDatabase && c.checkName === checkName && c.action === 'add');
   };
 
-  const isPendingRemove = (categoryId: string, checkName: string, type: 'daily' | 'weekly') => {
+  const isPendingRemove = (checkName: string, type: 'daily' | 'weekly') => {
     const changes = type === 'daily' ? pendingChanges.daily : pendingChanges.weekly;
-    return changes.some(c => c.categoryId === categoryId && c.checkName === checkName && c.action === 'remove');
+    return changes.some(c => c.dbId === selectedDatabase && c.checkName === checkName && c.action === 'remove');
   };
 
   return (
@@ -155,7 +159,7 @@ export const CheckTypesManager = () => {
           <div>
             <CardTitle>Check Types Management</CardTitle>
             <CardDescription>
-              Add or remove check types for each database category. Changes will apply to Data Entry.
+              Configure daily and weekly check types for each database
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -163,14 +167,14 @@ export const CheckTypesManager = () => {
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset to Defaults
+                  Reset All
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Reset to Defaults?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will reset all check types to their original defaults. Any custom checks you've added will be removed.
+                    This will reset all check types for all databases to their original defaults.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -183,20 +187,41 @@ export const CheckTypesManager = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Database Selector */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Database className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Select Database:</span>
+          </div>
+          <Select value={selectedDatabase} onValueChange={setSelectedDatabase}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Select a database" />
+            </SelectTrigger>
+            <SelectContent>
+              {databases.map(db => (
+                <SelectItem key={db.id} value={db.id}>
+                  {db.shortName} - {db.databaseName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedDb && !dailyCheckTypes[selectedDatabase]?.length && (
+            <Button variant="outline" size="sm" onClick={handleInitializeDatabase}>
+              Initialize Default Checks
+            </Button>
+          )}
+        </div>
+
         {hasPendingChanges && (
           <div className="flex items-center justify-between p-4 bg-muted rounded-lg border">
             <div className="flex items-center gap-2">
               <Badge variant="secondary">
                 {pendingChanges.daily.length + pendingChanges.weekly.length} pending changes
               </Badge>
-              <span className="text-sm text-muted-foreground">
-                Click Apply to save changes
-              </span>
+              <span className="text-sm text-muted-foreground">Click Apply to save changes</span>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={cancelChanges}>
-                Cancel
-              </Button>
+              <Button variant="outline" size="sm" onClick={cancelChanges}>Cancel</Button>
               <Button size="sm" onClick={applyChanges}>
                 <Check className="h-4 w-4 mr-2" />
                 Apply Changes
@@ -205,100 +230,82 @@ export const CheckTypesManager = () => {
           </div>
         )}
 
-        <Tabs defaultValue="daily">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="daily">Daily Checks</TabsTrigger>
-            <TabsTrigger value="weekly">Weekly Checks</TabsTrigger>
-          </TabsList>
+        {selectedDatabase && (
+          <Tabs defaultValue="daily">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="daily">Daily Checks ({getEffectiveChecks('daily').length})</TabsTrigger>
+              <TabsTrigger value="weekly">Weekly Checks ({getEffectiveChecks('weekly').length})</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="daily" className="space-y-6 mt-4">
-            {categories.map(category => (
-              <div key={category.id} className="space-y-4">
-                <div>
-                  <h3 className="font-semibold">{category.name}</h3>
-                  <p className="text-sm text-muted-foreground">{category.description}</p>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add new check..."
-                    value={newDailyChecks[category.id] || ''}
-                    onChange={(e) => setNewDailyChecks(prev => ({ ...prev, [category.id]: e.target.value }))}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddDailyCheck(category.id)}
-                  />
-                  <Button onClick={() => handleAddDailyCheck(category.id)} size="icon">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {getEffectiveChecks(category.id, 'daily').map(check => (
-                    <Badge
-                      key={check}
-                      variant={isPendingAdd(category.id, check, 'daily') ? 'default' : isPendingRemove(category.id, check, 'daily') ? 'destructive' : 'secondary'}
-                      className="flex items-center gap-1 py-1.5 px-3"
-                    >
-                      {check}
-                      {!isPendingRemove(category.id, check, 'daily') && (
-                        <button
-                          onClick={() => handleRemoveDailyCheck(category.id, check)}
-                          className="ml-1 hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </Badge>
-                  ))}
-                </div>
-                <Separator />
+            <TabsContent value="daily" className="space-y-4 mt-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add new daily check..."
+                  value={newDailyCheck}
+                  onChange={(e) => setNewDailyCheck(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddDailyCheck()}
+                />
+                <Button onClick={handleAddDailyCheck} size="icon">
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
-            ))}
-          </TabsContent>
 
-          <TabsContent value="weekly" className="space-y-6 mt-4">
-            {categories.map(category => (
-              <div key={category.id} className="space-y-4">
-                <div>
-                  <h3 className="font-semibold">{category.name}</h3>
-                  <p className="text-sm text-muted-foreground">{category.description}</p>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add new check..."
-                    value={newWeeklyChecks[category.id] || ''}
-                    onChange={(e) => setNewWeeklyChecks(prev => ({ ...prev, [category.id]: e.target.value }))}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddWeeklyCheck(category.id)}
-                  />
-                  <Button onClick={() => handleAddWeeklyCheck(category.id)} size="icon">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {getEffectiveChecks(category.id, 'weekly').map(check => (
-                    <Badge
-                      key={check}
-                      variant={isPendingAdd(category.id, check, 'weekly') ? 'default' : isPendingRemove(category.id, check, 'weekly') ? 'destructive' : 'secondary'}
-                      className="flex items-center gap-1 py-1.5 px-3"
-                    >
-                      {check}
-                      {!isPendingRemove(category.id, check, 'weekly') && (
-                        <button
-                          onClick={() => handleRemoveWeeklyCheck(category.id, check)}
-                          className="ml-1 hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </Badge>
-                  ))}
-                </div>
-                <Separator />
+              <div className="flex flex-wrap gap-2">
+                {getEffectiveChecks('daily').map(check => (
+                  <Badge
+                    key={check}
+                    variant={isPendingAdd(check, 'daily') ? 'default' : isPendingRemove(check, 'daily') ? 'destructive' : 'secondary'}
+                    className="flex items-center gap-1 py-1.5 px-3"
+                  >
+                    {check}
+                    {!isPendingRemove(check, 'daily') && (
+                      <button onClick={() => handleRemoveDailyCheck(check)} className="ml-1 hover:text-destructive">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </Badge>
+                ))}
+                {getEffectiveChecks('daily').length === 0 && (
+                  <p className="text-sm text-muted-foreground">No checks configured. Add checks or initialize defaults.</p>
+                )}
               </div>
-            ))}
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+
+            <TabsContent value="weekly" className="space-y-4 mt-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add new weekly check..."
+                  value={newWeeklyCheck}
+                  onChange={(e) => setNewWeeklyCheck(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddWeeklyCheck()}
+                />
+                <Button onClick={handleAddWeeklyCheck} size="icon">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {getEffectiveChecks('weekly').map(check => (
+                  <Badge
+                    key={check}
+                    variant={isPendingAdd(check, 'weekly') ? 'default' : isPendingRemove(check, 'weekly') ? 'destructive' : 'secondary'}
+                    className="flex items-center gap-1 py-1.5 px-3"
+                  >
+                    {check}
+                    {!isPendingRemove(check, 'weekly') && (
+                      <button onClick={() => handleRemoveWeeklyCheck(check)} className="ml-1 hover:text-destructive">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </Badge>
+                ))}
+                {getEffectiveChecks('weekly').length === 0 && (
+                  <p className="text-sm text-muted-foreground">No checks configured. Add checks or initialize defaults.</p>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
       </CardContent>
     </Card>
   );
