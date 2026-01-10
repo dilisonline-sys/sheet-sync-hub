@@ -17,74 +17,7 @@ import { mockDatabases } from '@/data/mockDatabases';
 import { CheckStatus, TablespaceInfo } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useChecks } from '@/contexts/ChecksContext';
-
-const dailyCheckTypes = [
-  'DB Instance Availability',
-  'Alert Log: Errors and Warnings',
-  'Active Session Count',
-  'DB Full Backup',
-  'Archive Log Backup',
-  'DB Load from OEM',
-  'DB Jobs',
-  'Check Cluster Services',
-  'Check SCAN Services',
-  'Long Running Queries',
-  'Database Locks',
-  'Listener Status',
-  'Connection Test',
-];
-
-const oemCheckTypes = [
-  'OMS Status',
-  'Instance Availability',
-  'Errors and Warnings',
-  'AWR Reports',
-  'DB Full Backup',
-  'DB Jobs',
-  'Long Running Queries',
-  'Repository DB Availability',
-  'Repository DB Space',
-  'Management Agents Status',
-  'Agent Version Validation',
-  'Database Targets Reachable',
-  'Critical Alerts Review',
-  'Performance Charts Review',
-  'Compliance Standards Review',
-];
-
-const auditVaultCheckTypes = [
-  'Instance Availability',
-  'System Status CPU',
-  'System Status Memory',
-  'System Status Disk Space',
-  'Audit Trail Collection',
-  'Repository Growth Monitoring',
-  'Agents Online Status',
-  'Agents Collecting Data',
-  'Upload Backlog',
-  'Upload Connectivity',
-  'Logs Review',
-];
-
-const firewallCheckTypes = [
-  'Instance Availability',
-  'Firewall Policies Active',
-  'Blocking Rules Validation',
-  'Alerting Rules Validation',
-];
-
-const getCheckTypesForDatabase = (type: string) => {
-  switch (type) {
-    case 'oem':
-      return oemCheckTypes;
-    case 'audit_vault':
-      return auditVaultCheckTypes;
-    case 'firewall':
-      return firewallCheckTypes;
-    default:
-      return dailyCheckTypes;
-  }
-};
+import { useCheckTypes } from '@/contexts/CheckTypesContext';
 
 const statusOptions: { value: CheckStatus; label: string; icon: React.ReactNode; color: string }[] = [
   { value: 'pass', label: 'Pass', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-emerald-500' },
@@ -96,19 +29,18 @@ const statusOptions: { value: CheckStatus; label: string; icon: React.ReactNode;
 export default function DataEntry() {
   const { toast } = useToast();
   const { saveDailyChecks, saveWeeklyChecks } = useChecks();
+  const { getDailyChecksForDatabaseType, getWeeklyChecksForDatabaseType } = useCheckTypes();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDatabase, setSelectedDatabase] = useState<string>('');
   const [dailyChecksState, setDailyChecksState] = useState<Record<string, CheckStatus>>({});
   const [dailyComments, setDailyComments] = useState<Record<string, string>>({});
   
   // Weekly check fields
-  const [productionDbSize, setProductionDbSize] = useState('');
-  const [archiveDbSize, setArchiveDbSize] = useState('');
-  const [invalidObjects, setInvalidObjects] = useState('');
-  const [instanceStartDate, setInstanceStartDate] = useState('');
+  const [weeklyChecksState, setWeeklyChecksState] = useState<Record<string, string>>({});
 
   const selectedDb = mockDatabases.find(db => db.id === selectedDatabase);
-  const checkTypes = selectedDb ? getCheckTypesForDatabase(selectedDb.type) : [];
+  const dailyCheckTypes = selectedDb ? getDailyChecksForDatabaseType(selectedDb.type) : [];
+  const weeklyCheckTypes = selectedDb ? getWeeklyChecksForDatabaseType(selectedDb.type) : [];
 
   const handleDailyCheckChange = (checkName: string, status: CheckStatus) => {
     setDailyChecksState(prev => ({ ...prev, [checkName]: status }));
@@ -116,6 +48,10 @@ export default function DataEntry() {
 
   const handleCommentChange = (checkName: string, comment: string) => {
     setDailyComments(prev => ({ ...prev, [checkName]: comment }));
+  };
+
+  const handleWeeklyCheckChange = (checkName: string, value: string) => {
+    setWeeklyChecksState(prev => ({ ...prev, [checkName]: value }));
   };
 
   const handleSaveDailyChecks = () => {
@@ -153,10 +89,10 @@ export default function DataEntry() {
 
     // Save to context (which persists to localStorage and updates dashboard)
     saveWeeklyChecks(selectedDatabase, selectedDate, {
-      productionDbSize: productionDbSize || undefined,
-      archiveDbSize: archiveDbSize || undefined,
-      invalidObjects: invalidObjects ? parseInt(invalidObjects, 10) : undefined,
-      instanceStartDate: instanceStartDate || undefined,
+      productionDbSize: weeklyChecksState['Production DB Size'] || undefined,
+      archiveDbSize: weeklyChecksState['Archive DB Size'] || undefined,
+      invalidObjects: weeklyChecksState['Invalid Objects Count'] ? parseInt(weeklyChecksState['Invalid Objects Count'], 10) : undefined,
+      instanceStartDate: weeklyChecksState['Instance Start Date'] || undefined,
     });
 
     toast({
@@ -165,19 +101,13 @@ export default function DataEntry() {
     });
 
     // Reset form after saving
-    setProductionDbSize('');
-    setArchiveDbSize('');
-    setInvalidObjects('');
-    setInstanceStartDate('');
+    setWeeklyChecksState({});
   };
 
   const resetForm = () => {
     setDailyChecksState({});
     setDailyComments({});
-    setProductionDbSize('');
-    setArchiveDbSize('');
-    setInvalidObjects('');
-    setInstanceStartDate('');
+    setWeeklyChecksState({});
   };
 
   const handleDatabaseChange = (value: string) => {
@@ -281,7 +211,7 @@ export default function DataEntry() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {checkTypes.map((checkName, index) => (
+                  {dailyCheckTypes.map((checkName, index) => (
                     <div key={checkName} className="space-y-3">
                       <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                         <div className="lg:w-1/3">
@@ -314,7 +244,7 @@ export default function DataEntry() {
                         onChange={(e) => handleCommentChange(checkName, e.target.value)}
                         className="lg:ml-[33.33%] lg:w-2/3"
                       />
-                      {index < checkTypes.length - 1 && <Separator className="mt-4" />}
+                      {index < dailyCheckTypes.length - 1 && <Separator className="mt-4" />}
                     </div>
                   ))}
 
@@ -339,46 +269,17 @@ export default function DataEntry() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="productionDbSize">Production DB Size</Label>
-                      <Input
-                        id="productionDbSize"
-                        placeholder="e.g., 612 GB"
-                        value={productionDbSize}
-                        onChange={(e) => setProductionDbSize(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="archiveDbSize">Archive DB Size</Label>
-                      <Input
-                        id="archiveDbSize"
-                        placeholder="e.g., 1252 GB"
-                        value={archiveDbSize}
-                        onChange={(e) => setArchiveDbSize(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="invalidObjects">Invalid Objects Count</Label>
-                      <Input
-                        id="invalidObjects"
-                        type="number"
-                        placeholder="e.g., 99"
-                        value={invalidObjects}
-                        onChange={(e) => setInvalidObjects(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="instanceStartDate">Instance Start Date</Label>
-                      <Input
-                        id="instanceStartDate"
-                        placeholder="e.g., 23-Feb-2024 09:49:11"
-                        value={instanceStartDate}
-                        onChange={(e) => setInstanceStartDate(e.target.value)}
-                      />
-                    </div>
+                    {weeklyCheckTypes.map((checkName) => (
+                      <div key={checkName} className="space-y-2">
+                        <Label htmlFor={checkName}>{checkName}</Label>
+                        <Input
+                          id={checkName}
+                          placeholder={`Enter ${checkName.toLowerCase()}`}
+                          value={weeklyChecksState[checkName] || ''}
+                          onChange={(e) => handleWeeklyCheckChange(checkName, e.target.value)}
+                        />
+                      </div>
+                    ))}
                   </div>
 
                   <div className="flex justify-end pt-4">

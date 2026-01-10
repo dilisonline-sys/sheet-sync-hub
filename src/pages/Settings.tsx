@@ -1,7 +1,8 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatabaseConnection } from '@/components/settings/DatabaseConnection';
-import { Settings as SettingsIcon, Database, Users } from 'lucide-react';
+import { CheckTypesManager } from '@/components/settings/CheckTypesManager';
+import { Settings as SettingsIcon, Database, ListChecks } from 'lucide-react';
 
 const Settings = () => {
   return (
@@ -23,6 +24,10 @@ const Settings = () => {
               <Database className="h-4 w-4" />
               Database
             </TabsTrigger>
+            <TabsTrigger value="checks" className="flex items-center gap-2">
+              <ListChecks className="h-4 w-4" />
+              Check Types
+            </TabsTrigger>
             <TabsTrigger value="general" className="flex items-center gap-2">
               <SettingsIcon className="h-4 w-4" />
               General
@@ -31,6 +36,10 @@ const Settings = () => {
 
           <TabsContent value="database">
             <DatabaseConnection />
+          </TabsContent>
+
+          <TabsContent value="checks">
+            <CheckTypesManager />
           </TabsContent>
 
           <TabsContent value="general">
