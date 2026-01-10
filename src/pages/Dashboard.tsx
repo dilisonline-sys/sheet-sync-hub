@@ -2,11 +2,12 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChecks } from '@/contexts/ChecksContext';
+import { useDatabases } from '@/contexts/DatabaseContext';
+import { useCheckTypes } from '@/contexts/CheckTypesContext';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockDatabases } from '@/data/mockDatabases';
 import { generateTrendData } from '@/data/mockDailyChecks';
 import { getTablespaceUsageData } from '@/data/mockWeeklyChecks';
 import { CheckStatus, DailyCheckSummary } from '@/types';
@@ -27,35 +28,39 @@ import {
 const Dashboard = () => {
   const { isAuthenticated } = useAuth();
   const { dailyChecksByDatabase, weeklyChecks } = useChecks();
+  const { databases } = useDatabases();
+  const { getDailyChecksForDatabase } = useCheckTypes();
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
 
   // Calculate stats
-  const totalDatabases = mockDatabases.length;
+  const totalDatabases = databases.length;
   const trendData = generateTrendData(30);
   
-  // Calculate health status for each database
-  const databaseHealth = Object.entries(dailyChecksByDatabase).map(([dbId, checks]) => {
+  // Calculate health status for each database from the databases context
+  const databaseHealth = databases.map((db) => {
+    const checks = dailyChecksByDatabase[db.id] || [];
     const latestCheck = checks[0];
     const failedCount = latestCheck?.checks.filter(c => c.status === 'fail').length || 0;
     const warningCount = latestCheck?.checks.filter(c => c.status === 'warning').length || 0;
+    const configuredChecks = getDailyChecksForDatabase(db.id);
     
     let health: 'healthy' | 'warning' | 'critical' = 'healthy';
     if (failedCount > 0) health = 'critical';
     else if (warningCount > 2) health = 'warning';
     
-    const db = mockDatabases.find(d => d.id === dbId);
     return {
-      dbId,
-      dbName: db?.shortName || dbId,
-      fullName: db?.databaseName || dbId,
+      dbId: db.id,
+      dbName: db.shortName,
+      fullName: db.databaseName,
       health,
       failedCount,
       warningCount,
       passedCount: (latestCheck?.checks.length || 0) - failedCount - warningCount,
-      type: db?.type || 'primary',
+      type: db.type,
+      configuredChecks: configuredChecks.length,
     };
   });
 
@@ -178,14 +183,15 @@ const Dashboard = () => {
               </TabsList>
 
               <TabsContent value="daily" className="space-y-6">
-                {Object.entries(dailyChecksByDatabase).map(([dbId, checks]) => {
-                  const db = mockDatabases.find(d => d.id === dbId);
+                {databases.map((db) => {
+                  const checks = dailyChecksByDatabase[db.id] || [];
+                  if (checks.length === 0) return null;
                   return (
                     <DailyChecksTable 
-                      key={dbId}
-                      databaseName={db?.shortName || dbId}
-                      fullName={db?.databaseName || dbId}
-                      checks={checks.slice(0, 7)} // Last 7 days
+                      key={db.id}
+                      databaseName={db.shortName}
+                      fullName={db.databaseName}
+                      checks={checks.slice(0, 7)}
                     />
                   );
                 })}
@@ -193,7 +199,7 @@ const Dashboard = () => {
 
               <TabsContent value="weekly" className="space-y-6">
                 {weeklyChecks.map((weeklyCheck) => {
-                  const db = mockDatabases.find(d => d.id === weeklyCheck.databaseId);
+                  const db = databases.find(d => d.id === weeklyCheck.databaseId);
                   return (
                     <WeeklyChecksCard
                       key={weeklyCheck.id}

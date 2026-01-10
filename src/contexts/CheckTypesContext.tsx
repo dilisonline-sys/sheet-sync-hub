@@ -4,19 +4,20 @@ export interface CheckTypeCategory {
   id: string;
   name: string;
   description: string;
-  databaseTypes: string[]; // Which database types use this category
+  databaseTypes: string[];
 }
 
 export interface CheckTypesContextType {
-  dailyCheckTypes: Record<string, string[]>; // categoryId -> checks
+  dailyCheckTypes: Record<string, string[]>; // databaseId -> checks
   weeklyCheckTypes: Record<string, string[]>;
   categories: CheckTypeCategory[];
-  addDailyCheck: (categoryId: string, checkName: string) => void;
-  removeDailyCheck: (categoryId: string, checkName: string) => void;
-  addWeeklyCheck: (categoryId: string, checkName: string) => void;
-  removeWeeklyCheck: (categoryId: string, checkName: string) => void;
-  getDailyChecksForDatabaseType: (type: string) => string[];
-  getWeeklyChecksForDatabaseType: (type: string) => string[];
+  addDailyCheck: (databaseId: string, checkName: string) => void;
+  removeDailyCheck: (databaseId: string, checkName: string) => void;
+  addWeeklyCheck: (databaseId: string, checkName: string) => void;
+  removeWeeklyCheck: (databaseId: string, checkName: string) => void;
+  getDailyChecksForDatabase: (databaseId: string) => string[];
+  getWeeklyChecksForDatabase: (databaseId: string) => string[];
+  initializeChecksForDatabase: (databaseId: string, dbType: string) => void;
   resetToDefaults: () => void;
 }
 
@@ -27,7 +28,8 @@ const defaultCategories: CheckTypeCategory[] = [
   { id: 'firewall', name: 'Firewall', description: 'Database Firewall', databaseTypes: ['firewall'] },
 ];
 
-const defaultDailyCheckTypes: Record<string, string[]> = {
+// Default checks by category (used as templates for new databases)
+const defaultDailyChecksByCategory: Record<string, string[]> = {
   standard: [
     'DB Instance Availability',
     'Alert Log: Errors and Warnings',
@@ -81,7 +83,7 @@ const defaultDailyCheckTypes: Record<string, string[]> = {
   ],
 };
 
-const defaultWeeklyCheckTypes: Record<string, string[]> = {
+const defaultWeeklyChecksByCategory: Record<string, string[]> = {
   standard: [
     'Production DB Size',
     'Archive DB Size',
@@ -105,20 +107,52 @@ const defaultWeeklyCheckTypes: Record<string, string[]> = {
   ],
 };
 
-const STORAGE_KEY_DAILY = 'checkTypes_daily';
-const STORAGE_KEY_WEEKLY = 'checkTypes_weekly';
+// Initial database IDs from mockDatabases
+const initialDatabaseIds = ['cprdb', 'cprdb2', 'cpsdb', 'cpadb', 'cpgdb', 'oemdb', 'avs', 'dbfw'];
+const databaseTypeMap: Record<string, string> = {
+  cprdb: 'primary', cprdb2: 'primary', cpsdb: 'standby', cpadb: 'archive',
+  cpgdb: 'gis', oemdb: 'oem', avs: 'audit_vault', dbfw: 'firewall',
+};
+
+const getCategoryForType = (dbType: string): string => {
+  const category = defaultCategories.find(cat => cat.databaseTypes.includes(dbType));
+  return category?.id || 'standard';
+};
+
+const generateInitialChecks = (): Record<string, string[]> => {
+  const checks: Record<string, string[]> = {};
+  initialDatabaseIds.forEach(dbId => {
+    const dbType = databaseTypeMap[dbId] || 'primary';
+    const categoryId = getCategoryForType(dbType);
+    checks[dbId] = [...(defaultDailyChecksByCategory[categoryId] || defaultDailyChecksByCategory.standard)];
+  });
+  return checks;
+};
+
+const generateInitialWeeklyChecks = (): Record<string, string[]> => {
+  const checks: Record<string, string[]> = {};
+  initialDatabaseIds.forEach(dbId => {
+    const dbType = databaseTypeMap[dbId] || 'primary';
+    const categoryId = getCategoryForType(dbType);
+    checks[dbId] = [...(defaultWeeklyChecksByCategory[categoryId] || defaultWeeklyChecksByCategory.standard)];
+  });
+  return checks;
+};
+
+const STORAGE_KEY_DAILY = 'checkTypes_daily_v2';
+const STORAGE_KEY_WEEKLY = 'checkTypes_weekly_v2';
 
 const CheckTypesContext = createContext<CheckTypesContextType | undefined>(undefined);
 
 export const CheckTypesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [dailyCheckTypes, setDailyCheckTypes] = useState<Record<string, string[]>>(() => {
     const stored = localStorage.getItem(STORAGE_KEY_DAILY);
-    return stored ? JSON.parse(stored) : defaultDailyCheckTypes;
+    return stored ? JSON.parse(stored) : generateInitialChecks();
   });
 
   const [weeklyCheckTypes, setWeeklyCheckTypes] = useState<Record<string, string[]>>(() => {
     const stored = localStorage.getItem(STORAGE_KEY_WEEKLY);
-    return stored ? JSON.parse(stored) : defaultWeeklyCheckTypes;
+    return stored ? JSON.parse(stored) : generateInitialWeeklyChecks();
   });
 
   useEffect(() => {
@@ -129,54 +163,59 @@ export const CheckTypesProvider: React.FC<{ children: ReactNode }> = ({ children
     localStorage.setItem(STORAGE_KEY_WEEKLY, JSON.stringify(weeklyCheckTypes));
   }, [weeklyCheckTypes]);
 
-  const addDailyCheck = (categoryId: string, checkName: string) => {
+  const addDailyCheck = (databaseId: string, checkName: string) => {
     if (!checkName.trim()) return;
     setDailyCheckTypes(prev => ({
       ...prev,
-      [categoryId]: [...(prev[categoryId] || []), checkName.trim()],
+      [databaseId]: [...(prev[databaseId] || []), checkName.trim()],
     }));
   };
 
-  const removeDailyCheck = (categoryId: string, checkName: string) => {
+  const removeDailyCheck = (databaseId: string, checkName: string) => {
     setDailyCheckTypes(prev => ({
       ...prev,
-      [categoryId]: (prev[categoryId] || []).filter(c => c !== checkName),
+      [databaseId]: (prev[databaseId] || []).filter(c => c !== checkName),
     }));
   };
 
-  const addWeeklyCheck = (categoryId: string, checkName: string) => {
+  const addWeeklyCheck = (databaseId: string, checkName: string) => {
     if (!checkName.trim()) return;
     setWeeklyCheckTypes(prev => ({
       ...prev,
-      [categoryId]: [...(prev[categoryId] || []), checkName.trim()],
+      [databaseId]: [...(prev[databaseId] || []), checkName.trim()],
     }));
   };
 
-  const removeWeeklyCheck = (categoryId: string, checkName: string) => {
+  const removeWeeklyCheck = (databaseId: string, checkName: string) => {
     setWeeklyCheckTypes(prev => ({
       ...prev,
-      [categoryId]: (prev[categoryId] || []).filter(c => c !== checkName),
+      [databaseId]: (prev[databaseId] || []).filter(c => c !== checkName),
     }));
   };
 
-  const getCategoryForDatabaseType = (dbType: string): string => {
-    const category = defaultCategories.find(cat => cat.databaseTypes.includes(dbType));
-    return category?.id || 'standard';
+  const getDailyChecksForDatabase = (databaseId: string): string[] => {
+    return dailyCheckTypes[databaseId] || [];
   };
 
-  const getDailyChecksForDatabaseType = (type: string): string[] => {
-    const categoryId = getCategoryForDatabaseType(type);
-    return dailyCheckTypes[categoryId] || [];
+  const getWeeklyChecksForDatabase = (databaseId: string): string[] => {
+    return weeklyCheckTypes[databaseId] || [];
   };
 
-  const getWeeklyChecksForDatabaseType = (type: string): string[] => {
-    const categoryId = getCategoryForDatabaseType(type);
-    return weeklyCheckTypes[categoryId] || [];
+  const initializeChecksForDatabase = (databaseId: string, dbType: string) => {
+    const categoryId = getCategoryForType(dbType);
+    setDailyCheckTypes(prev => ({
+      ...prev,
+      [databaseId]: [...(defaultDailyChecksByCategory[categoryId] || defaultDailyChecksByCategory.standard)],
+    }));
+    setWeeklyCheckTypes(prev => ({
+      ...prev,
+      [databaseId]: [...(defaultWeeklyChecksByCategory[categoryId] || defaultWeeklyChecksByCategory.standard)],
+    }));
   };
 
   const resetToDefaults = () => {
-    setDailyCheckTypes(defaultDailyCheckTypes);
-    setWeeklyCheckTypes(defaultWeeklyCheckTypes);
+    setDailyCheckTypes(generateInitialChecks());
+    setWeeklyCheckTypes(generateInitialWeeklyChecks());
   };
 
   return (
@@ -189,8 +228,9 @@ export const CheckTypesProvider: React.FC<{ children: ReactNode }> = ({ children
         removeDailyCheck,
         addWeeklyCheck,
         removeWeeklyCheck,
-        getDailyChecksForDatabaseType,
-        getWeeklyChecksForDatabaseType,
+        getDailyChecksForDatabase,
+        getWeeklyChecksForDatabase,
+        initializeChecksForDatabase,
         resetToDefaults,
       }}
     >

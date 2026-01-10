@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ChecksProvider } from "@/contexts/ChecksContext";
 import { CheckTypesProvider } from "@/contexts/CheckTypesContext";
+import { DatabaseProvider } from "@/contexts/DatabaseContext";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import Databases from "@/pages/Databases";
@@ -28,25 +29,27 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <ChecksProvider>
-            <CheckTypesProvider>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/databases" element={<Databases />} />
-                <Route path="/users" element={<UserManagement />} />
-                <Route path="/import" element={<Import />} />
-                <Route path="/data-entry" element={<DataEntry />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/reports/daily" element={<DailyReport />} />
-                <Route path="/reports/monthly" element={<MonthlyReport />} />
-                <Route path="/reports/yearly" element={<YearlyReport />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </CheckTypesProvider>
-          </ChecksProvider>
+          <DatabaseProvider>
+            <ChecksProvider>
+              <CheckTypesProvider>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/databases" element={<Databases />} />
+                  <Route path="/users" element={<UserManagement />} />
+                  <Route path="/import" element={<Import />} />
+                  <Route path="/data-entry" element={<DataEntry />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/reports/daily" element={<DailyReport />} />
+                  <Route path="/reports/monthly" element={<MonthlyReport />} />
+                  <Route path="/reports/yearly" element={<YearlyReport />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </CheckTypesProvider>
+            </ChecksProvider>
+          </DatabaseProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
