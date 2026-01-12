@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate, Link, useLocation } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { 
   Database, 
@@ -19,7 +20,7 @@ import {
   FileBarChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -29,16 +30,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { user, logout, isAuthenticated, isAdmin } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isDark, setIsDark] = useState(true);
-
-  // Set dark mode by default
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
+  const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   if (!isAuthenticated) {
@@ -137,7 +132,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 onClick={toggleTheme}
                 className="flex-1"
               >
-                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
               <Button 
                 variant="ghost" 
