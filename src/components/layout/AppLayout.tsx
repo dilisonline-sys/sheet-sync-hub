@@ -6,7 +6,8 @@ import {
   Database, 
   LayoutDashboard, 
   Users, 
-  Settings, 
+  Settings,
+  Shield,
   LogOut,
   Menu,
   X,
@@ -51,6 +52,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     { name: 'Reports', href: '/reports', icon: FileBarChart },
     { name: 'Import Data', href: '/import', icon: FileSpreadsheet },
     ...(isAdmin ? [{ name: 'User Management', href: '/users', icon: Users }] : []),
+    ...(isAdmin ? [{ name: 'User Audit', href: '/audit', icon: Shield }] : []),
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
