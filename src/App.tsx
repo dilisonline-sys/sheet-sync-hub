@@ -19,6 +19,7 @@ import MonthlyReport from "@/pages/MonthlyReport";
 import YearlyReport from "@/pages/YearlyReport";
 import Settings from "@/pages/Settings";
 import UserAudit from "@/pages/UserAudit";
+import Verification from "@/pages/Verification";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
                   <Route path="/databases" element={<Databases />} />
                   <Route path="/users" element={<UserManagement />} />
                   <Route path="/audit" element={<UserAudit />} />
+                  <Route path="/verification" element={<Verification />} />
                   <Route path="/import" element={<Import />} />
                   <Route path="/data-entry" element={<DataEntry />} />
                   <Route path="/reports" element={<Reports />} />

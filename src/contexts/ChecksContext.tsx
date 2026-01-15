@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { DailyCheckSummary, WeeklyCheck, CheckStatus } from '@/types';
+import { DailyCheckSummary, WeeklyCheck, CheckStatus, VerificationStatus } from '@/types';
 import { mockDailyChecksByDatabase, generateDailyChecksForDatabase } from '@/data/mockDailyChecks';
 import { mockWeeklyChecks as initialWeeklyChecks } from '@/data/mockWeeklyChecks';
 import { mockDatabases } from '@/data/mockDatabases';
@@ -11,7 +11,8 @@ interface ChecksContextType {
     databaseId: string,
     date: Date,
     checks: Record<string, CheckStatus>,
-    comments: Record<string, string>
+    comments: Record<string, string>,
+    submittedBy?: string
   ) => void;
   saveWeeklyChecks: (
     databaseId: string,
@@ -21,11 +22,15 @@ interface ChecksContextType {
       archiveDbSize?: string;
       invalidObjects?: number;
       instanceStartDate?: string;
-    }
+    },
+    submittedBy?: string
   ) => void;
   getDailyChecksForDatabase: (databaseId: string) => DailyCheckSummary[];
   getWeeklyChecksForDatabase: (databaseId: string) => WeeklyCheck[];
   clearAllChecks: () => void;
+  verifyDailyCheck: (databaseId: string, date: Date, status: VerificationStatus, verifiedBy: string, comments?: string) => void;
+  verifyWeeklyCheck: (checkId: string, status: VerificationStatus, verifiedBy: string, comments?: string) => void;
+  getPendingVerifications: () => { daily: { databaseId: string; check: DailyCheckSummary }[]; weekly: WeeklyCheck[] };
 }
 
 const ChecksContext = createContext<ChecksContextType | undefined>(undefined);
@@ -112,7 +117,8 @@ export const ChecksProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     databaseId: string,
     date: Date,
     checks: Record<string, CheckStatus>,
-    comments: Record<string, string>
+    comments: Record<string, string>,
+    submittedBy?: string
   ) => {
     const db = mockDatabases.find(d => d.id === databaseId);
     if (!db) return;
@@ -129,6 +135,8 @@ export const ChecksProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       databaseName: db.databaseName,
       instanceName: db.instanceName,
       checks: checksArray,
+      verification: { status: 'pending' },
+      submittedBy,
     };
 
     setDailyChecksByDatabase(prev => {
@@ -153,7 +161,8 @@ export const ChecksProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       archiveDbSize?: string;
       invalidObjects?: number;
       instanceStartDate?: string;
-    }
+    },
+    submittedBy?: string
   ) => {
     const weekNumber = Math.ceil(
       (date.getTime() - new Date(date.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)
@@ -169,6 +178,8 @@ export const ChecksProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       archiveDbSize: data.archiveDbSize || undefined,
       invalidObjects: data.invalidObjects,
       instanceStartDate: data.instanceStartDate || undefined,
+      verification: { status: 'pending' },
+      submittedBy,
     };
 
     setWeeklyChecks(prev => {
@@ -187,6 +198,78 @@ export const ChecksProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       // Add new entry
       return [newWeeklyCheck, ...prev];
     });
+  };
+
+  const verifyDailyCheck = (
+    databaseId: string,
+    date: Date,
+    status: VerificationStatus,
+    verifiedBy: string,
+    comments?: string
+  ) => {
+    const dateStr = date.toDateString();
+    setDailyChecksByDatabase(prev => {
+      const dbChecks = prev[databaseId] || [];
+      const updatedChecks = dbChecks.map(check => {
+        if (new Date(check.date).toDateString() === dateStr) {
+          return {
+            ...check,
+            verification: {
+              status,
+              verifiedBy,
+              verifiedAt: new Date(),
+              comments,
+            },
+          };
+        }
+        return check;
+      });
+      return {
+        ...prev,
+        [databaseId]: updatedChecks,
+      };
+    });
+  };
+
+  const verifyWeeklyCheck = (
+    checkId: string,
+    status: VerificationStatus,
+    verifiedBy: string,
+    comments?: string
+  ) => {
+    setWeeklyChecks(prev =>
+      prev.map(check => {
+        if (check.id === checkId) {
+          return {
+            ...check,
+            verification: {
+              status,
+              verifiedBy,
+              verifiedAt: new Date(),
+              comments,
+            },
+          };
+        }
+        return check;
+      })
+    );
+  };
+
+  const getPendingVerifications = () => {
+    const daily: { databaseId: string; check: DailyCheckSummary }[] = [];
+    Object.entries(dailyChecksByDatabase).forEach(([databaseId, checks]) => {
+      checks.forEach(check => {
+        if (check.verification?.status === 'pending') {
+          daily.push({ databaseId, check });
+        }
+      });
+    });
+
+    const weekly = weeklyChecks.filter(
+      check => check.verification?.status === 'pending'
+    );
+
+    return { daily, weekly };
   };
 
   const getDailyChecksForDatabase = (databaseId: string): DailyCheckSummary[] => {
@@ -214,6 +297,9 @@ export const ChecksProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         getDailyChecksForDatabase,
         getWeeklyChecksForDatabase,
         clearAllChecks,
+        verifyDailyCheck,
+        verifyWeeklyCheck,
+        getPendingVerifications,
       }}
     >
       {children}

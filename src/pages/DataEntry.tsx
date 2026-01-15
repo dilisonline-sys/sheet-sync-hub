@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useChecks } from '@/contexts/ChecksContext';
 import { useCheckTypes } from '@/contexts/CheckTypesContext';
 import { useDatabases } from '@/contexts/DatabaseContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusOptions: { value: CheckStatus; label: string; icon: React.ReactNode; color: string }[] = [
   { value: 'pass', label: 'Pass', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-emerald-500' },
@@ -28,6 +29,7 @@ const statusOptions: { value: CheckStatus; label: string; icon: React.ReactNode;
 
 export default function DataEntry() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { saveDailyChecks, saveWeeklyChecks } = useChecks();
   const { getDailyChecksForDatabase, getWeeklyChecksForDatabase } = useCheckTypes();
   const { databases } = useDatabases();
@@ -66,11 +68,11 @@ export default function DataEntry() {
     }
 
     // Save to context (which persists to localStorage and updates dashboard)
-    saveDailyChecks(selectedDatabase, selectedDate, dailyChecksState, dailyComments);
+    saveDailyChecks(selectedDatabase, selectedDate, dailyChecksState, dailyComments, user?.name);
 
     toast({
       title: "Daily Checks Saved",
-      description: `Successfully saved daily checks for ${selectedDb?.databaseName}. Dashboard has been updated.`,
+      description: `Successfully saved daily checks for ${selectedDb?.databaseName}. Pending admin verification.`,
     });
 
     // Reset form after saving
@@ -94,11 +96,11 @@ export default function DataEntry() {
       archiveDbSize: weeklyChecksState['Archive DB Size'] || undefined,
       invalidObjects: weeklyChecksState['Invalid Objects Count'] ? parseInt(weeklyChecksState['Invalid Objects Count'], 10) : undefined,
       instanceStartDate: weeklyChecksState['Instance Start Date'] || undefined,
-    });
+    }, user?.name);
 
     toast({
       title: "Weekly Checks Saved",
-      description: `Successfully saved weekly checks for ${selectedDb?.databaseName}. Dashboard has been updated.`,
+      description: `Successfully saved weekly checks for ${selectedDb?.databaseName}. Pending admin verification.`,
     });
 
     // Reset form after saving
