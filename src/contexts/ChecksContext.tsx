@@ -25,6 +25,7 @@ interface ChecksContextType {
   ) => void;
   getDailyChecksForDatabase: (databaseId: string) => DailyCheckSummary[];
   getWeeklyChecksForDatabase: (databaseId: string) => WeeklyCheck[];
+  clearAllChecks: () => void;
 }
 
 const ChecksContext = createContext<ChecksContextType | undefined>(undefined);
@@ -196,6 +197,13 @@ export const ChecksProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return weeklyChecks.filter(check => check.databaseId === databaseId);
   };
 
+  const clearAllChecks = () => {
+    setDailyChecksByDatabase({});
+    setWeeklyChecks([]);
+    localStorage.removeItem(STORAGE_KEY_DAILY);
+    localStorage.removeItem(STORAGE_KEY_WEEKLY);
+  };
+
   return (
     <ChecksContext.Provider
       value={{
@@ -205,6 +213,7 @@ export const ChecksProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         saveWeeklyChecks,
         getDailyChecksForDatabase,
         getWeeklyChecksForDatabase,
+        clearAllChecks,
       }}
     >
       {children}
