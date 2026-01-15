@@ -22,6 +22,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { 
   Search, 
@@ -33,7 +42,8 @@ import {
   XCircle,
   Shield,
   Users,
-  UserPlus
+  UserPlus,
+  Pencil
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 
@@ -41,6 +51,8 @@ const UserManagement = () => {
   const { isAdmin, isAuthenticated } = useAuth();
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
 
   // Redirect if not authenticated or not admin
   if (!isAuthenticated) {
@@ -82,6 +94,26 @@ const UserManagement = () => {
       )
     );
     toast.success('User role updated');
+  };
+
+  const handleEditName = (user: User) => {
+    setEditingUser(user);
+    setEditName(user.name);
+  };
+
+  const handleSaveName = () => {
+    if (!editingUser || !editName.trim()) return;
+    
+    setUsers(prev => 
+      prev.map(user => 
+        user.id === editingUser.id 
+          ? { ...user, name: editName.trim() } 
+          : user
+      )
+    );
+    toast.success('User name updated successfully');
+    setEditingUser(null);
+    setEditName('');
   };
 
   const filteredUsers = users.filter(user => 
@@ -147,6 +179,10 @@ const UserManagement = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditName(user)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit Name
+                      </DropdownMenuItem>
                       {user.approvalStatus === 'pending' && (
                         <>
                           <DropdownMenuItem onClick={() => handleApprove(user.id)}>
@@ -191,6 +227,36 @@ const UserManagement = () => {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* Edit Name Dialog */}
+        <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User Name</DialogTitle>
+              <DialogDescription>
+                Update the display name for {editingUser?.email}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Enter new name"
+                className="mt-2"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingUser(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveName} disabled={!editName.trim()}>
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
