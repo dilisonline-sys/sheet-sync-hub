@@ -28,6 +28,16 @@ export interface DatabaseInstance {
   type: 'primary' | 'standby' | 'archive' | 'gis' | 'oem' | 'pilot' | 'audit_vault' | 'firewall';
 }
 
+// Verification Types
+export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+
+export interface VerificationInfo {
+  status: VerificationStatus;
+  verifiedBy?: string;
+  verifiedAt?: Date;
+  comments?: string;
+}
+
 // Daily Check Types
 export type CheckStatus = 'pass' | 'fail' | 'warning' | 'not_checked';
 
@@ -40,6 +50,7 @@ export interface DailyCheck {
   status: CheckStatus;
   value?: string;
   comments?: string;
+  verification?: VerificationInfo;
 }
 
 export interface DailyCheckSummary {
@@ -51,6 +62,8 @@ export interface DailyCheckSummary {
     status: CheckStatus;
     details?: string;
   }[];
+  verification?: VerificationInfo;
+  submittedBy?: string;
 }
 
 // Weekly Check Types
@@ -74,6 +87,8 @@ export interface WeeklyCheck {
   instanceStartDate?: string;
   tablespaces?: TablespaceInfo[];
   objectsCreated?: ObjectCreated[];
+  verification?: VerificationInfo;
+  submittedBy?: string;
 }
 
 export interface ObjectCreated {

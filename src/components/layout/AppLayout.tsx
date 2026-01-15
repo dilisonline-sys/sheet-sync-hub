@@ -17,7 +17,8 @@ import {
   Sun,
   FileSpreadsheet,
   ClipboardEdit,
-  FileBarChart
+  FileBarChart,
+  ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -46,6 +47,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     { name: 'Data Entry', href: '/data-entry', icon: ClipboardEdit },
     { name: 'Reports', href: '/reports', icon: FileBarChart },
     { name: 'Import Data', href: '/import', icon: FileSpreadsheet },
+    ...(isAdmin ? [{ name: 'Verification', href: '/verification', icon: ShieldCheck }] : []),
     ...(isAdmin ? [{ name: 'User Management', href: '/users', icon: Users }] : []),
     ...(isAdmin ? [{ name: 'User Audit', href: '/audit', icon: Shield }] : []),
     { name: 'Settings', href: '/settings', icon: Settings },
